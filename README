@@ -1,0 +1,50 @@
+
+    patchchecker: trying to improve patches management
+
+
+Warning: this code relies on the use of
+  - a mail archive for the project list where patches are carried out
+    and using MHonarc for the indexing (can probably be extended)
+  - use of GIT as the SCM with the availabilitity of a local and
+    kept up to date checkout of the project
+
+How this works:
+===============
+
+  The indexer fetches the mail archives from the web and try to keep
+  up to date, best it to run it in a crontab like:
+  1 * * * * (cd $HOME/patchchecker ; ./indexer.py ) > $HOME/tmp/pck.log 2>&1
+  this will progressively grow up a local XML database of all the
+  mail informations, referers, and which ones have ACKs and reviews
+
+  The patchchecker.py command itself is expected to be run from the command
+  line manually will update informations from the git checkout, load
+  the messages data from the indexer and will cross the informations
+  from both and extract the useful data like patches waiting reviews
+
+  The config modules tries to isolate the dependancies, it will check
+  that a configuration file is present either as patchchecker.conf
+  in the local dir or a .patchchecker one in the home directory
+
+To get started
+==============
+
+  Copy the patchchecker.conf.exmpl to patchchecker.conf, edit
+  [git]tree (and possibly [mail]archives if not for libvirt)
+  launch the ./indexer.py a few times to verify it actually can
+  load and parse messages.
+  Then run patchchecker.py, it should fetch data from the git
+  checkout, do some computations and give back the informations.
+
+  For the curious have a look at the content of the XML database
+  files. They are mostly used for caching, and should be easilly
+  extendable to monitor more informations.
+
+To submit reports/patches:
+==========================
+
+  Best is to use the libvirt list, see:
+    https://www.redhat.com/mailman/listinfo/libvir-list
+
+Thu Jun  9 16:07:24 CST 2011
+Daniel Veillard <veillard@redhat.com>
