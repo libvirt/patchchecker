@@ -8,7 +8,7 @@ import ConfigParser
 import sys
 import os
 
-config = ConfigParser.ConfigParser(allow_no_value=True)
+config = ConfigParser.ConfigParser()
 
 #
 # Two mandatory settings:
