@@ -240,8 +240,8 @@ def save_messages(filename):
         print "Failed to open %s for writing" % filename
     f.write("<messages>\n")
     # save the messages sorted by msgid, increasing date/time
-    l = messagesdb.keys()
-    l.sort()
+    k = messagesdb.keys()
+    l = sorted(k, key=lambda x: messagesdb[x]['date'])
     n = 0
     for message in l:
         save_message(f, message)

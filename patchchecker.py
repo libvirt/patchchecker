@@ -130,8 +130,8 @@ def save_patches(filename):
         print "Failed to open %s for writing" % filename
         return 0
     f.write("<patches>\n")
-    # TODO: order by patch date
-    l = patchesdb.keys()
+    k = patchesdb.keys()
+    l = sorted(k, key=lambda x: patchesdb[x]['cdate'])
     n = 0
     for patch in l:
         save_patch(f, patch)

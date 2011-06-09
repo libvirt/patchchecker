@@ -81,8 +81,9 @@ def save_commits(filename):
         print "Failed to open %s for writing" % filename
         return 0
     f.write("<commits>\n")
-    # TODO: order by commit date
-    l = commitsdb.keys()
+    # order by commit date
+    k = commitsdb.keys()
+    l = sorted(k, key=lambda x: commitsdb[x]['date'])
     n = 0
     for commit in l:
         save_commit(f, commit)
