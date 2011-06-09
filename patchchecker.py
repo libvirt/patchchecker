@@ -56,7 +56,8 @@ def escape(raw):
 #
 def add_patchesdb(mailid, msgid, subject, date,
                   acks = [], reviews = [], commit = None,
-                  author = None, email = None, cdate = None):
+                  author = None, email = None, cdate = None,
+                  patchset = None):
     # we index by mailid
     if patchesdb.has_key(mailid):
         patch = patchesdb[mailid]
@@ -78,6 +79,8 @@ def add_patchesdb(mailid, msgid, subject, date,
             patch["email"] = author
         if patch["cdate"] == None:
             patch["cdate"] = cdate
+        if patch["patchset"] == None:
+            patch["patchset"] = patchset
     else:
         patch={}
         patch["msgid"] = msgid
@@ -89,6 +92,7 @@ def add_patchesdb(mailid, msgid, subject, date,
         patch["author"] = author
         patch["email"] = email
         patch["cdate"] = cdate
+        patch["patchset"] = patchset
         patchesdb[mailid] = patch
         return 1
     return 0
@@ -101,6 +105,8 @@ def save_patch(f, uuid):
         f.write(" author='%s'" % (escape(patch['author'])))
     if patch["email"] != None:
         f.write(" email='%s'" % (escape(patch['email'])))
+    if patch["patchset"] != None:
+        f.write(" patchset='%s'" % (escape(patch['patchset'])))
     f.write(">\n")
     f.write("    <subject>%s</subject>\n" % (escape(patch['subject'])))
     if patch["commit"] != None and patch["commit"] != "":
@@ -143,6 +149,7 @@ def load_one_patch(patch):
         subject=patch.xpathEval("string(subject)")
         author= patch.prop("author")
         email= patch.prop("email")
+        patchset= patch.prop("patchset")
         commit= patch.xpathEval("string(commit)")
         cdate=patch.xpathEval("string(commit/@cdate)")
         try:
@@ -159,7 +166,7 @@ def load_one_patch(patch):
         print "Failed to load one message from the database", sys.exc_info()
         return 0
     return add_patchesdb(mailid, msgid, subject, date, acks, reviews,
-                         commit, author, email, cdate)
+                         commit, author, email, cdate, patchset)
 
 def load_patches(filename):
     try:
@@ -236,7 +243,7 @@ def add_messagedb(msgid, url = "", author = "", address = "", mailid = "", subje
 
     if patches != 0:
         add_patchesdb(mailid, msgid, subject, date, [], [],
-                      None, None, None, None)
+                      None, None, None, None, None)
 
     if refs != None:
         for ref in refs:
@@ -329,6 +336,13 @@ def patchset_detection():
                     print "%s seems a patch set with %d patches" % (
                                  msg['msgid'], subpatches)
                 patchsetsdb[m] = patchset
+                for p in patchset:
+                    try:
+                        patch = patchesdb[p]
+                        patch['patchset'] = m
+                    except:
+                        print "Patch %s from patchset %s was not found" % (
+                              p, m) , sys.exc_info()
 
 #
 # Utilities for string cleanups and comparisons
