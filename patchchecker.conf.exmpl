@@ -1,0 +1,15 @@
+#
+# Edit the [git]tree and [mail]archives at a minimum
+#
+[git]
+tree=/home/my_login/libvirt
+logsize=500
+dbname=commits.xml
+
+[mail]
+archives=http://www.redhat.com/archives/libvir-list/%d-%s/date.html
+max_fetch=100
+dbname=messages.xml
+
+[patches]
+dbname=patches.xml
