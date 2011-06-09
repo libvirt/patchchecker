@@ -1,5 +1,6 @@
 #
 # Edit the [git]tree and [mail]archives at a minimum
+# All options are described in config.py
 #
 [git]
 tree=/home/my_login/libvirt
@@ -13,3 +14,4 @@ dbname=messages.xml
 
 [patches]
 dbname=patches.xml
+maxlag=5

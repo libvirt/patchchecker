@@ -586,13 +586,14 @@ def get_lagging():
             d = msg["date"]
             author = msg["author"]
             lag = compute_delay(d)
-            if lag > 5:
-                lagging.append((p, author, msg["url"]))
+            if lag > config.get_patch_maxlag():
+                lagging.append((p, lag, author, msg["url"], msg["subject"]))
                 if verbose:
                     print "Lag(%d) from %s : %s" % (
                           lag, author, msg["subject"][0:40])
                     if msg["url"] != "":
                         print "%s" % (msg["url"])
+    return lagging
 
 def initialize():
     # try to load the previous XML history
@@ -620,6 +621,11 @@ def main():
     # show statistics
     show_statistics()
     lagging = get_lagging()
+    for s in lagging:
+        (p, lag, author, url, subject) = s
+        print "Lag(%d) from %s : %s" % (
+              lag, author, subject[0:40])
+        print "%s" % (url)
 
     save()
 

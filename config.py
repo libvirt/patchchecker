@@ -37,13 +37,22 @@ def get_git_logsize():
         return 500
 
 #
-# Maximum number of mails archives pages to fetch in a single pass
+# Maximum number of mails archives pages to fetch in a single pass default 100
 #
 def get_mail_max_fetch():
     try:
         return config.getint("mail", "archives")
     except:
         return 100
+
+#
+# Numbers of days without feedback on a patch before reporting it default 5
+#
+def get_patch_maxlag():
+    try:
+        return config.getint("patches", "maxlag")
+    except:
+        return 5
 
 #
 # Filename for the XML database for commits, default is commits.xml
