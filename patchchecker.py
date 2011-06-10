@@ -465,6 +465,14 @@ def author_lookup(mailauthor):
             return author
     return ""
 
+def days_before(date1, date2):
+    try:
+        s1 = time.mktime(time.strptime(date1, "%Y%m%d %H:%M:%S"))
+        s2 = time.mktime(time.strptime(date2, "%Y%m%d %H:%M:%S"))
+    except:
+        return False
+    return (s1 + 86400 < s2)
+
 def checking_commits():
     commit_found = 0
     #
@@ -473,6 +481,7 @@ def checking_commits():
     #
     for p in patchesdb:
         patch = patchesdb[p]
+        date = patch['date']
         # skip patches we know are already commited
         if patch['commit'] != None and len(patch['commit']) == 40:
             continue
@@ -518,6 +527,12 @@ def checking_commits():
         #
         for c in gitimport.commitsdb.keys():
             commit = gitimport.commitsdb[c]
+            cdate = commit['date']
+            # a priori commits are later than patch submission,
+            # though with timezones and mail propagation one should
+            # allow commits before post to soem extent
+            if days_before(cdate, date):
+                continue
             if string_matcher(commit['subject'], subject):
                 if email_matcher(commit['email'], mailaddress) or \
                    email_matcher(commit['author'], mailauthor):
@@ -584,8 +599,9 @@ def compute_delay(d):
 
 def get_lagging():
     lagging = []
-    l = patchesdb.keys()
-    l.sort()
+    # Work out from the oldest patches submitted
+    k = patchesdb.keys()
+    l = sorted(k, key=lambda x: patchesdb[x]['date'])
     for p in l:
         patch = patchesdb[p]
         #
