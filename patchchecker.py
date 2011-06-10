@@ -57,7 +57,7 @@ def escape(raw):
 def add_patchesdb(mailid, msgid, subject, date,
                   acks = [], reviews = [], commit = None,
                   author = None, email = None, cdate = None,
-                  patchset = None):
+                  patchset = None, url = None):
     # we index by mailid
     if patchesdb.has_key(mailid):
         patch = patchesdb[mailid]
@@ -81,6 +81,8 @@ def add_patchesdb(mailid, msgid, subject, date,
             patch["cdate"] = cdate
         if patch["patchset"] == None:
             patch["patchset"] = patchset
+        if patch["url"] == None:
+            patch["url"] = url
     else:
         patch={}
         patch["msgid"] = msgid
@@ -93,6 +95,7 @@ def add_patchesdb(mailid, msgid, subject, date,
         patch["email"] = email
         patch["cdate"] = cdate
         patch["patchset"] = patchset
+        patch["url"] = url
         patchesdb[mailid] = patch
         return 1
     return 0
@@ -109,6 +112,8 @@ def save_patch(f, uuid):
         f.write(" patchset='%s'" % (escape(patch['patchset'])))
     f.write(">\n")
     f.write("    <subject>%s</subject>\n" % (escape(patch['subject'])))
+    if patch["url"] != None and patch["url"] != "":
+        f.write("    <url>%s</url>\n" % (escape(patch['url'])))
     if patch["commit"] != None and patch["commit"] != "":
         f.write("    <commit")
         if patch["cdate"] != None:
@@ -151,6 +156,7 @@ def load_one_patch(patch):
         email= patch.prop("email")
         patchset= patch.prop("patchset")
         commit= patch.xpathEval("string(commit)")
+        url= patch.xpathEval("string(url)")
         cdate=patch.xpathEval("string(commit/@cdate)")
         try:
             for rev in patch.xpathEval("review"):
@@ -166,7 +172,7 @@ def load_one_patch(patch):
         print "Failed to load one message from the database", sys.exc_info()
         return 0
     return add_patchesdb(mailid, msgid, subject, date, acks, reviews,
-                         commit, author, email, cdate, patchset)
+                         commit, author, email, cdate, patchset, url)
 
 def load_patches(filename):
     try:
@@ -243,7 +249,7 @@ def add_messagedb(msgid, url = "", author = "", address = "", mailid = "", subje
 
     if patches != 0:
         add_patchesdb(mailid, msgid, subject, date, [], [],
-                      None, None, None, None, None)
+                      None, None, None, None, None, url)
 
     if refs != None:
         for ref in refs:

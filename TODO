@@ -1,12 +1,16 @@
-- sort various databases by time instead of uuid or mailid
 - detect patches obsoleted by newer versions
+
 - automatically fetch more than the current month of archive
+  can be done manually for each month with
+  indexer.py --archive-month 2011-May
+
 - set cleanup scenarios for patches and messages
   - commited for more than one month
   - more than 6 months old
   - ...
 - generate XML for the patch checker output and
   create XSLT to generate status page automatically
+
 - try to optimize the matching patch against commit to avoid
   a pure quadratic execution time, keep information about
   having tested commits up to a given time
