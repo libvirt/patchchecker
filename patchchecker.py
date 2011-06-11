@@ -27,6 +27,7 @@ verbose = 0
 messagesdb={}
 patchesdb={}
 refsdb={}
+acksdb={}
 patchsetsdb={}
 authorsdb={}
 
@@ -136,7 +137,7 @@ def save_patches(filename):
         return 0
     f.write("<patches>\n")
     k = patchesdb.keys()
-    l = sorted(k, key=lambda x: patchesdb[x]['cdate'])
+    l = sorted(k, key=lambda x: patchesdb[x]['date'])
     n = 0
     for patch in l:
         save_patch(f, patch)
@@ -402,13 +403,15 @@ def ack_checking():
         if refsdb.has_key(p):
             refs = refsdb[p]
             if verbose:
-                print "found ref for patch %s: %s" % (p, refs)
+                print "found refs for patch %s: %s" % (p, refs)
             for r in refs:
                 if messagesdb.has_key(r):
                     m = messagesdb[r]
                     if m["ack"] > 0:
                         if r not in patch["acks"]:
                             patch["acks"].append(r)
+                        # save that message r acks message p
+                        acksdb[r] = p
                     if m['author'] != msg['author']:
                         if r not in patch["reviews"]:
                             patch["reviews"].append(r)
@@ -513,7 +516,7 @@ def checking_commits():
                 patch["cdate"] = commit['date']
                 patch["commit"] = uuid
                 patch["author"] = commit['author']
-                patch["email"] = commit['author']
+                patch["email"] = commit['email']
         except:
             uuid = ""
         if uuid != "":
@@ -543,7 +546,25 @@ def checking_commits():
                     patch["cdate"] = commit['date']
                     patch["commit"] = c
                     patch["author"] = commit['author']
-                    patch["email"] = commit['author']
+                    patch["email"] = commit['email']
+                #
+                # Special case, sometime the commiter also fold a patch of his
+                # own inside a commit. In that case the message has both an
+                # ACK and a patch, and we should look for the patch as being
+                # commited under the ACK'ed patch name
+                #
+                elif msg['ack'] == 1 and msg['patches'] == 1:
+                    if acksdb.has_key(p):
+                        orig = acksdb[p]
+                        if patchesdb.has_key(orig):
+                            op = patchesdb[orig]
+                            if op['commit'] != None and len(op['commit']) == 40:
+                                if verbose:
+                                    print "folded in patch %s in %s" % (p, orig)
+                                patch["cdate"] = op["cdate"]
+                                patch["commit"] = op["commit"]
+                                patch["author"] = mailauthor
+                                patch["email"] = mailaddress
 
     return commit_found
 
