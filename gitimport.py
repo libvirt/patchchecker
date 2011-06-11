@@ -25,7 +25,7 @@ commitsdb = {}
 authorsdb = {}
 emailsdb = {}
 
-def add_commitdb(uuid, author, subject, email, date):
+def add_commitdb(uuid, author, subject, email, date, cname, cmail):
     if commitsdb.has_key(uuid):
         return 0
     commit={}
@@ -33,6 +33,8 @@ def add_commitdb(uuid, author, subject, email, date):
     commit['author'] = author
     commit['email'] = email
     commit['date'] = date
+    commit['cmail'] = cmail
+    commit['cname'] = cname
     commitsdb[uuid] = commit
     if authorsdb.has_key(author):
         patch_list = authorsdb[author]
@@ -71,6 +73,8 @@ def save_commit(f, uuid):
             uuid, escape(commit['author']), escape(commit['email']),
             escape(commit['date'])))
     f.write("    <subject>%s</subject>\n" % (escape(commit['subject'])))
+    f.write("    <commiter cmail='%s'>%s</commiter>\n" % (
+            escape(commit['cmail']), escape(commit['cname'])))
     f.write("  </commit>\n")
 
 
@@ -98,10 +102,12 @@ def load_one_commit(commit):
         email= commit.prop("email")
         date= commit.prop("date")
         subject=commit.xpathEval("string(subject)")
+        cname = commit.xpathEval("string(commiter)")
+        cmail = commit.xpathEval("string(commiter/@cmail)")
     except:
         print "Failed to load one message from the database", sys.exc_info()
         return 0
-    return add_commitdb(uuid, author, subject, email, date)
+    return add_commitdb(uuid, author, subject, email, date, cname, cmail)
 
 def load_commits(filename):
     try:
@@ -162,23 +168,33 @@ def split_commit_line(line):
         return None
     email = line[cur+14:nxt]
     cur = nxt
-    nxt = line.find(" commit_end=")
+    nxt = line.find(" commit_cname=")
     if nxt < cur:
         return None
     date = convert_date(line[cur+13:nxt])
+    cur = nxt
+    nxt = line.find(" commit_cmail=")
+    if nxt < cur:
+        return None
+    cname = line[cur+14:nxt]
+    cur = nxt
+    nxt = line.find(" commit_end=")
+    if nxt < cur:
+        return None
+    cmail = line[cur+14:nxt]
 
-    return (uuid, subject, author, email, date)
+    return (uuid, subject, author, email, date, cname, cmail)
 
 def refresh_one_commit(line):
     try:
-        (uuid, subject, author, email, date) = split_commit_line(line)
+        (uuid,subject,author,email,date,cname,cmail) = split_commit_line(line)
     except:
         print "Failed to parse one git log line output"
         return 0
     if commitsdb.has_key(uuid):
         return 0
 
-    return add_commitdb(uuid, author, subject, email, date)
+    return add_commitdb(uuid, author, subject, email, date, cname, cmail)
 
 def refresh_commit_logs(tree, size):
     if tree == None:
@@ -187,7 +203,7 @@ def refresh_commit_logs(tree, size):
         size = 100
     nb_commits = 0
 
-    log_format = """commit_id=%H commit_subject=%s commit_author=%an commit_email=%ae commit_date=%ci commit_end="""
+    log_format = """commit_id=%H commit_subject=%s commit_author=%an commit_email=%ae commit_date=%ci commit_cname=%cn commit_cmail=%ce commit_end="""
 
     args = ["git", "--git-dir=%s" % (tree), "log", "--max-count=%s" % (size),
                  "--pretty=format:\"%s\"" % (log_format) ]
