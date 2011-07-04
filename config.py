@@ -55,6 +55,14 @@ def get_patch_maxlag():
         return 5
 
 #
+# Don't report messages older than X days. 0 to turn off. Default 0
+def get_patch_cutoff():
+    try:
+        return config.getint("patches", "cutoff")
+    except:
+        return 0
+
+#
 # Filename for the XML database for commits, default is commits.xml
 #
 def get_git_dbname():

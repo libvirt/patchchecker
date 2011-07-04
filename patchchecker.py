@@ -643,7 +643,9 @@ def get_lagging():
             d = msg["date"]
             author = msg["author"]
             lag = compute_delay(d)
-            if lag > config.get_patch_maxlag():
+            cutoff = config.get_patch_cutoff()
+            if lag > config.get_patch_maxlag() and \
+                    (not cutoff or lag < cutoff):
                 lagging.append((p, lag, author, msg["url"], msg["subject"]))
                 if verbose:
                     print "Lag(%d) from %s : %s" % (
