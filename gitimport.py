@@ -28,6 +28,10 @@ emailsdb = {}
 def add_commitdb(uuid, author, subject, email, date, cname, cmail):
     if commitsdb.has_key(uuid):
         return 0
+
+    if config.outdated(date):
+        return -1
+
     commit={}
     commit['subject'] = subject
     commit['author'] = author
@@ -116,12 +120,18 @@ def load_commits(filename):
         print "Failed to read and parse %s" % filename
         return 0
     nb_commits = 0
+    too_old = 0
     ctxt = doc.xpathNewContext()
     commits = ctxt.xpathEval("//commit")
     for commit in commits:
-        nb_commits += load_one_commit(commit)
+        ret = load_one_commit(commit)
+        if ret == -1:
+            too_old += 1
+        else:
+            nb_commits += ret
     doc.freeDoc()
-    print "loaded %d commits from %s" % (nb_commits, filename)
+    print "loaded %d commits from %s, discarded %d old" % (nb_commits,
+          filename, too_old)
 
 #
 # Growing the commit database

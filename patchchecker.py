@@ -59,6 +59,10 @@ def add_patchesdb(mailid, msgid, subject, date,
                   acks = [], reviews = [], commit = None,
                   author = None, email = None, cdate = None,
                   patchset = None, url = None):
+
+    if config.outdated(date):
+        return -1
+
     # we index by mailid
     if patchesdb.has_key(mailid):
         patch = patchesdb[mailid]
@@ -182,17 +186,26 @@ def load_patches(filename):
         print "Failed to read and parse %s" % filename
         return 0
     nb_patches = 0
+    too_old = 0
     ctxt = doc.xpathNewContext()
     patches = ctxt.xpathEval("//patch")
     for patch in patches:
-        nb_patches += load_one_patch(patch)
+        ret = load_one_patch(patch)
+        if ret == -1:
+            too_old += 1
+        else:
+            nb_patches += ret
     doc.freeDoc()
-    print "loaded %d patches from %s" % (nb_patches, filename)
+    print "loaded %d patches from %s, discarded %d old" % (nb_patches,
+           filename, too_old)
 
 def add_messagedb(msgid, url = "", author = "", address = "", mailid = "", subject = "", date="", patches=0, ack=0, refs=[]):
 
     if msgid == None or msgid == "":
         return
+
+    if config.outdated(date):
+        return -1
 
     if mailid == None:
         mailid = ""
@@ -235,6 +248,7 @@ def add_messagedb(msgid, url = "", author = "", address = "", mailid = "", subje
             msg["refs"] = refs
         if ack > 0:
             msg["ack"] = ack
+        ret = 0
     except:
         msg = {}
         msg["msgid"] = msgid
@@ -247,6 +261,7 @@ def add_messagedb(msgid, url = "", author = "", address = "", mailid = "", subje
         msg["ack"] = ack
         msg["refs"] = refs
         messagesdb[mailid] = msg
+        ret = 1
 
     if patches != 0:
         add_patchesdb(mailid, msgid, subject, date, [], [],
@@ -259,6 +274,8 @@ def add_messagedb(msgid, url = "", author = "", address = "", mailid = "", subje
                 referers.append(mailid)
             else:
                 refsdb[ref] = [mailid]
+
+    return ret
 
 #
 # loading from XML and building the database
@@ -287,11 +304,12 @@ def load_one_message(message):
             ack=int(message.prop("ack"))
         except:
             ack=0
-        add_messagedb(msgid, url, author, address, mailid, subject, date, patches, ack, refs)
+        ret = add_messagedb(msgid, url, author, address, mailid, subject,
+                            date, patches, ack, refs)
     except:
         print "Failed to load one message from the database", sys.exc_info()
         return 0
-    return 1
+    return ret
 
 def load_messages(filename):
     try:
@@ -300,11 +318,18 @@ def load_messages(filename):
         print "Failed to read and parse %s" % filename
         return 0
     nb_messages = 0
+    too_old = 0
     ctxt = doc.xpathNewContext()
     messages = ctxt.xpathEval("//message")
     for message in messages:
-        nb_messages += load_one_message(message)
+        ret = load_one_message(message)
+        if ret == -1:
+            too_old += 1
+        else:
+            nb_messages += ret
     doc.freeDoc()
+    print "loaded %d messages from %s, discarded %d old" % (nb_messages,
+           filename, too_old)
 
 
 ###################################################################

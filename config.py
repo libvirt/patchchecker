@@ -7,6 +7,7 @@
 import ConfigParser
 import sys
 import os
+import time
 
 config = ConfigParser.ConfigParser()
 
@@ -125,6 +126,35 @@ def initialize(filename = ""):
     check()
 
 initialize()
+
+#
+# if we have a cutoff on report then we can avoid processing
+# patches, messages and commit older than the cutoff. Add a
+# one month margin to avoid dropping mails which could still
+# be relevant (mail threads are unlikely to last more than a month)
+#
+current_date = time.time()
+try:
+    cutoff_date = get_patch_cutoff()
+    cutoff_date += 30                 # Add a month
+    cutoff_date *= (24 * 60 * 60)     # Convert to seconds
+except:
+    cutoff_date = 0
+
+def outdated(date):
+    global cutoff_date
+    global current_date
+
+    if cutoff_date == 0:
+        return 0
+
+    try:
+        t = time.mktime(time.strptime(date, "%Y%m%d %H:%M:%S"))
+        if current_date - t > cutoff_date:
+            return 1
+    except:
+        return 0
+    return 0
 
 def main():
     print "Configured for git tree %s" % (get_git_tree())
