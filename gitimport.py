@@ -224,7 +224,9 @@ def refresh_commit_logs(tree, size):
         return -1
 
     for line in pipe:
-        nb_commits += refresh_one_commit(line)
+        ret = refresh_one_commit(line)
+        if ret >= 0:
+            nb_commits += ret
 
     return nb_commits
 
