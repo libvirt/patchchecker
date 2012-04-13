@@ -16,3 +16,4 @@ dbname=messages.xml
 dbname=patches.xml
 maxlag=5
 cutoff=90
+excludes=(libvirt-glib)|(test-API)

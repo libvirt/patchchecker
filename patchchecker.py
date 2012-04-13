@@ -10,6 +10,7 @@ import shutil
 import sys
 import string
 import os
+import re
 import difflib
 import time
 import gitimport
@@ -646,6 +647,15 @@ def compute_delay(d):
 def get_lagging():
     lagging = []
     cutoff = config.get_patch_cutoff()
+    try:
+        excludes_pattern = string.strip(config.get_patch_excludes())
+        if excludes_pattern != "":
+            excludes = re.compile(excludes_pattern)
+        else:
+            excludes = None
+    except:
+        excludes = None
+
     # Work out from the oldest patches submitted
     k = patchesdb.keys()
     l = sorted(k, key=lambda x: patchesdb[x]['date'])
@@ -655,6 +665,12 @@ def get_lagging():
         # Skip patches which were commited
         #
         if patch["commit"] != None and len(patch["commit"]) == 40:
+            continue
+
+        #
+        # Skip patches matching the exclude patterns
+        #
+        if excludes != None and re.search(excludes, patch["subject"]):
             continue
 
         #

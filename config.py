@@ -64,6 +64,11 @@ def get_patch_cutoff():
         return 0
 
 #
+# Do not report patches matching the regexp
+def get_patch_excludes():
+    return config.get("patches", "excludes")
+
+#
 # Filename for the XML database for commits, default is commits.xml
 #
 def get_git_dbname():
