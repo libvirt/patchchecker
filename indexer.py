@@ -625,7 +625,7 @@ def analyzeArchives(t = None, force = 0, max_fetch = 0):
 
 #########################################################################
 #                                                                       #
-#          Main code: open the DB, the API XML and analyze it           #
+#          Main code: open the DB, fetch mails, add them and save       #
 #                                                                       #
 #########################################################################
 
