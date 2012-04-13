@@ -59,7 +59,8 @@ def escape(raw):
 def add_patchesdb(mailid, msgid, subject, date,
                   acks = [], reviews = [], commit = None,
                   author = None, email = None, cdate = None,
-                  patchset = None, url = None):
+                  patchset = None, url = None, obsoleted = None,
+                  obsoletes = None):
 
     if config.outdated(date):
         return -1
@@ -82,13 +83,17 @@ def add_patchesdb(mailid, msgid, subject, date,
         if patch["author"] == None:
             patch["author"] = author
         if patch["email"] == None:
-            patch["email"] = author
+            patch["email"] = email
         if patch["cdate"] == None:
             patch["cdate"] = cdate
         if patch["patchset"] == None:
             patch["patchset"] = patchset
         if patch["url"] == None:
             patch["url"] = url
+        if patch["obsoleted"] == None:
+            patch["obsoleted"] = obsoleted
+        if patch["obsoletes"] == None:
+            patch["obsoletes"] = obsoletes
     else:
         patch={}
         patch["msgid"] = msgid
@@ -102,6 +107,8 @@ def add_patchesdb(mailid, msgid, subject, date,
         patch["cdate"] = cdate
         patch["patchset"] = patchset
         patch["url"] = url
+        patch["obsoleted"] = obsoleted
+        patch["obsoletes"] = obsoletes
         patchesdb[mailid] = patch
         return 1
     return 0
@@ -116,6 +123,8 @@ def save_patch(f, uuid):
         f.write(" email='%s'" % (escape(patch['email'])))
     if patch["patchset"] != None:
         f.write(" patchset='%s'" % (escape(patch['patchset'])))
+    if patch["obsoleted"] != None:
+        f.write(" obsoleted='%s'" % (escape(patch['obsoleted'])))
     f.write(">\n")
     f.write("    <subject>%s</subject>\n" % (escape(patch['subject'])))
     if patch["url"] != None and patch["url"] != "":
@@ -125,12 +134,15 @@ def save_patch(f, uuid):
         if patch["cdate"] != None:
             f.write(" cdate='%s'" % (escape(patch['cdate'])))
         f.write(">%s</commit>\n" % (escape(patch['commit'])))
-    if patch["reviews"] != []:
+    if patch["reviews"] != None and patch["reviews"] != []:
         for rev in patch["reviews"]:
             f.write("    <review>%s</review>\n" % (escape(rev)))
-    if patch["acks"] != []:
+    if patch["acks"] != None and patch["acks"] != []:
         for ack in patch["acks"]:
             f.write("    <ack>%s</ack>\n" % (escape(ack)))
+    if patch["obsoletes"] != None and patch["obsoletes"] != []:
+        for obs in patch["obsoletes"]:
+            f.write("    <obsoletes>%s</obsoletes>\n" % (escape(obs)))
     f.write("  </patch>\n")
 
 
@@ -153,6 +165,7 @@ def save_patches(filename):
 def load_one_patch(patch):
     acks = []
     reviews = []
+    obs = []
     try:
         mailid = patch.prop("mailid")
         msgid= patch.prop("msgid")
@@ -161,6 +174,7 @@ def load_one_patch(patch):
         author= patch.prop("author")
         email= patch.prop("email")
         patchset= patch.prop("patchset")
+        obsoleted= patch.prop("obsoleted")
         commit= patch.xpathEval("string(commit)")
         url= patch.xpathEval("string(url)")
         cdate=patch.xpathEval("string(commit/@cdate)")
@@ -174,11 +188,17 @@ def load_one_patch(patch):
                 acks.append(ack.content)
         except:
             pass
+        try:
+            for obs in patch.xpathEval("obsoletes"):
+                obs.append(obs.content)
+        except:
+            pass
     except:
         print "Failed to load one message from the database", sys.exc_info()
         return 0
     return add_patchesdb(mailid, msgid, subject, date, acks, reviews,
-                         commit, author, email, cdate, patchset, url)
+                         commit, author, email, cdate, patchset, url,
+                         obsoleted, obs)
 
 def load_patches(filename):
     try:
@@ -266,7 +286,7 @@ def add_messagedb(msgid, url = "", author = "", address = "", mailid = "", subje
 
     if patches != 0:
         add_patchesdb(mailid, msgid, subject, date, [], [],
-                      None, None, None, None, None, url)
+                      None, author, None, None, None, url, None, None)
 
     if refs != None:
         for ref in refs:
@@ -390,10 +410,21 @@ def string_matcher(str1, str2):
         return 1
     return 0
 
+def string_hard_matcher(str1, str2):
+    #
+    # see documentation on difflib,
+    #
+    s = difflib.SequenceMatcher(lambda x: x == " ", str1, str2)
+    if s.ratio() > 0.8:
+        return 1
+    return 0
+
 def email_matcher(str1, str2):
     #
     # for email after sanitizing you really want a greater match ratio
     #
+    if str1 == str2:
+        return 1
     s = difflib.SequenceMatcher(lambda x: x == " ", str1, str2)
     if s.ratio() > 0.8:
         return 1
@@ -477,6 +508,47 @@ def ack_checking():
                     #             if r not in patch["acks"]:
                     #                 patch["reviews"].append(r)
 
+
+#
+# patches become obsolete when the same author sent the same patch
+# at a later date.
+#
+def obsolete_patches_detection():
+    nb_obsoletes = 0
+    k = patchesdb.keys()
+    l = sorted(k, key=lambda x: patchesdb[x]['date'])
+    ll = len(l)
+    i = 0
+    while i < ll:
+        p = l[i]
+        i += 1
+        patch = patchesdb[p]
+        # skip patches we know are already obsoleted
+        if patch['obsoleted'] != None:
+            nb_obsoletes += 1
+            continue
+
+        subject = patch['subject']
+        author = patch['author']
+        j = i
+        while j < ll:
+            c = l[j]
+            j += 1
+            cur = patchesdb[c]
+            if cur['author'] == None or cur['subject'] == None:
+                continue
+
+            if string_matcher(cur['author'], author) and \
+                string_hard_matcher(cur['subject'], subject):
+                    nb_obsoletes += 1
+                    patch['obsoleted'] = c
+                    if cur["obsoletes"] == None:
+                        cur["obsoletes"] = [p]
+                    elif p not in cur["obsoletes"]:
+                        cur["obsoletes"].append(p)
+                    break;
+    return nb_obsoletes
+
 #
 # Commits checking:
 #
@@ -513,6 +585,9 @@ def checking_commits():
         date = patch['date']
         # skip patches we know are already commited
         if patch['commit'] != None and len(patch['commit']) == 40:
+            continue
+        # skip patches which are obsoleted
+        if patch['obsoleted'] != None:
             continue
 
         mailsubject = patch['subject']
@@ -674,10 +749,6 @@ def get_lagging():
             continue
 
         #
-        # TODO: detect superseeded patches and also ignore them
-        #
-
-        #
         # Look for patches without ACK or review
         #
         if len(patch["acks"]) == 0 and len(patch["reviews"]) == 0:
@@ -704,8 +775,15 @@ def initialize():
     gitimport.initialize()
 
     # compute acks etc
+    print "Doing patch set detection"
     patchset_detection()
+    print "Looking for obsoleted patches"
+    ret = obsolete_patches_detection()
+    if ret != 0:
+        print "Found %d obsolete patches" % (ret)
+    print "Looking for ACKs"
     ack_checking()
+    print "Checking for commits"
     ret = checking_commits()
     if ret != 0:
         print "Found %d commits for patches" % (ret)
@@ -713,10 +791,10 @@ def initialize():
 def save_lag(f, lag):
     try:
         (p, lag, author, url, subject) = lag
-        f.write("  <lag days='%d' author='%s'>\n" % (lag, author))
-        f.write("    <url>%s</url>\n" % (url))
-        f.write("    <subject>%s</subject>\n" % (subject))
-        f.write("  </lag>")
+        f.write("  <lag days='%d' author='%s'>\n" % (lag, escape(author)))
+        f.write("    <url>%s</url>\n" % (escape(url)))
+        f.write("    <subject>%s</subject>\n" % (escape(subject)))
+        f.write("  </lag>\n")
     except:
         return 0
     return 1
