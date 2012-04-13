@@ -645,6 +645,7 @@ def compute_delay(d):
 
 def get_lagging():
     lagging = []
+    cutoff = config.get_patch_cutoff()
     # Work out from the oldest patches submitted
     k = patchesdb.keys()
     l = sorted(k, key=lambda x: patchesdb[x]['date'])
@@ -668,7 +669,6 @@ def get_lagging():
             d = msg["date"]
             author = msg["author"]
             lag = compute_delay(d)
-            cutoff = config.get_patch_cutoff()
             if lag > config.get_patch_maxlag() and \
                     (not cutoff or lag < cutoff):
                 lagging.append((p, lag, author, msg["url"], msg["subject"]))
@@ -694,10 +694,36 @@ def initialize():
     if ret != 0:
         print "Found %d commits for patches" % (ret)
 
-def save():
+def save_lag(f, lag):
+    try:
+        (p, lag, author, url, subject) = lag
+        f.write("  <lag days='%d' author='%s'>\n" % (lag, author))
+        f.write("    <url>%s</url>\n" % (url))
+        f.write("    <subject>%s</subject>\n" % (subject))
+        f.write("  </lag>")
+    except:
+        return 0
+    return 1
+
+
+def save_lagging(filename, lagging):
+    try:
+        f = open(filename, 'w')
+    except:
+        print "Failed to open %s for writing" % filename
+        return 0
+    n = 0
+    f.write("<lagging count='%d'>\n" % (len(lagging)))
+    for lag in lagging:
+        n += save_lag(f, lag)
+    f.write("</lagging>\n")
+    print "Saved %d lagging to %s\n" % (n, filename)
+
+def save(lagging):
     # save stuff
     save_patches(config.get_patches_dbname())
     gitimport.save()
+    save_lagging("lagging.xml", lagging)
 
 def main():
     initialize()
@@ -711,7 +737,7 @@ def main():
               lag, author, subject[0:40])
         print "%s" % (url)
 
-    save()
+    save(lagging)
 
 
 if __name__ == "__main__":
