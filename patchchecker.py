@@ -165,7 +165,7 @@ def save_patches(filename):
 def load_one_patch(patch):
     acks = []
     reviews = []
-    obs = []
+    obsoletes = []
     try:
         mailid = patch.prop("mailid")
         msgid= patch.prop("msgid")
@@ -190,7 +190,7 @@ def load_one_patch(patch):
             pass
         try:
             for obs in patch.xpathEval("obsoletes"):
-                obs.append(obs.content)
+                obsoletes.append(obs.content)
         except:
             pass
     except:
@@ -198,7 +198,7 @@ def load_one_patch(patch):
         return 0
     return add_patchesdb(mailid, msgid, subject, date, acks, reviews,
                          commit, author, email, cdate, patchset, url,
-                         obsoleted, obs)
+                         obsoleted, obsoletes)
 
 def load_patches(filename):
     try:
