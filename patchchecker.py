@@ -512,6 +512,8 @@ def ack_checking():
 #
 # patches become obsolete when the same author sent the same patch
 # at a later date.
+# patch becomes obsolete if a commit with the same subject was done
+# at a later date (potentially by someone else)
 #
 def obsolete_patches_detection():
     nb_obsoletes = 0
@@ -523,7 +525,6 @@ def obsolete_patches_detection():
         p = l[i]
         i += 1
         patch = patchesdb[p]
-        # skip patches we know are already obsoleted
         if patch['obsoleted'] != None:
             nb_obsoletes += 1
             continue
@@ -547,6 +548,36 @@ def obsolete_patches_detection():
                     elif p not in cur["obsoletes"]:
                         cur["obsoletes"].append(p)
                     break;
+
+    while i < ll:
+        p = l[i]
+        i += 1
+        patch = patchesdb[p]
+        if patch['obsoleted'] != None:
+            continue
+
+        # skip patches we know are already commited
+        if patch['commit'] != None and len(patch['commit']) == 40:
+            continue
+
+        #
+        # try a relaxed lookup for that patch in the database commits
+        #
+        for c in gitimport.commitsdb.keys():
+            commit = gitimport.commitsdb[c]
+            cdate = commit['date']
+            # a priori commits are later than patch submission,
+            # though with timezones and mail propagation one should
+            # allow commits before post to soem extent
+            if days_before(cdate, date):
+                continue
+            if string_matcher(commit['subject'], subject):
+                nb_obsoletes += 1
+                patch["cdate"] = commit['date']
+                patch["commit"] = c
+                patch["author"] = commit['author']
+                patch["email"] = commit['email']
+
     return nb_obsoletes
 
 #
@@ -740,6 +771,12 @@ def get_lagging():
         # Skip patches which were commited
         #
         if patch["commit"] != None and len(patch["commit"]) == 40:
+            continue
+
+        #
+        # Skip patches which are obsoleted
+        #
+        if patch["obsoleted"] != None:
             continue
 
         #
